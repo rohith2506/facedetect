@@ -1,42 +1,45 @@
 package redis
 
 import (
-	"errors"
-
 	"github.com/go-redis/redis/v7"
 )
 
-type redisParams struct {
-	hostName string
-	port     string
-	passWord string
-	DB       int
+const (
+	hostName = "127.0.0.1"
+	port     = "6379"
+	passWord = ""
+	dB       = 0
+)
+
+// Connection ...
+type Connection struct {
+	database int
+	rClient  *redis.Client
 }
 
-var redisClient *redis.Client
+var connection *Connection
 
 // CreateConnection ..
-func CreateConnection() *redis.Client {
-	if redisClient == nil {
-		rParams := redisParams{
-			hostName: "localhost",
-			port:     "6379",
-			passWord: "",
-			DB:       0,
-		}
-		redisClient = redis.NewClient(&redis.Options{
-			Addr:     rParams.hostName + ":" + rParams.port,
-			Password: rParams.passWord,
-			DB:       rParams.DB,
+func CreateConnection(database int) *Connection {
+	if connection == nil {
+		redisClient := redis.NewClient(&redis.Options{
+			Addr:     hostName + ":" + port,
+			Password: passWord,
+			DB:       database,
 		})
+		connection = &Connection{
+			database: database,
+			rClient:  redisClient,
+		}
 	}
-	return redisClient
+	return connection
 }
 
-func (rClient *redis.Client) GetKey(key string) (string, error) {
-	value, err := rClient.Get(key).Result()
+//GetKey ...
+func (conn *Connection) GetKey(key string) (string, error) {
+	value, err := conn.rClient.Get(key).Result()
 	if err == redis.Nil {
-		return "", errors.New("Key is not present")
+		return "", nil
 	} else if err != nil {
 		return "", err
 	} else {
@@ -44,8 +47,9 @@ func (rClient *redis.Client) GetKey(key string) (string, error) {
 	}
 }
 
-func (rClient *redis.Client) SetKey(key string, value string) error {
-	err := rClient.Set(key, value, 0).Err()
+//SetKey ...
+func (conn *Connection) SetKey(key string, value interface{}) error {
+	err := conn.rClient.Set(key, value, 0).Err()
 	if err != nil {
 		return err
 	}

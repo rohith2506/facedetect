@@ -1,6 +1,9 @@
 package detector
 
 import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"image/color"
 	"image/jpeg"
@@ -15,6 +18,7 @@ import (
 
 	pigo "github.com/esimov/pigo/core"
 	"github.com/fogleman/gg"
+	redis "github.com/rohith2506/facedetect/redis"
 )
 
 type coord struct {
@@ -52,11 +56,36 @@ var (
 	mouthCascade = []string{"lp93", "lp84", "lp82", "lp81"}
 )
 
+func getBytes(key interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(key)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+
+}
+
 // DetectFaces ....
 func DetectFaces(userInput string) []Detection {
 	reader, err := os.Open(userInput)
 	if err != nil {
 		log.Fatalf("Error in reading the image file: %v", err)
+	}
+
+	conn := redis.CreateConnection(0)
+	value, err := conn.GetKey(userInput)
+	if err != nil {
+		log.Fatalf("Error in connecting to redis: %v", err)
+	}
+
+	if len(value) != 0 {
+		var dets []Detection
+		if err := json.Unmarshal([]byte(value), &dets); err != nil {
+			log.Fatalf("Error in retrieving data from redis: %v", err)
+		}
+		return dets
 	}
 
 	img, err := image.Decode(reader)
@@ -90,6 +119,9 @@ func DetectFaces(userInput string) []Detection {
 	if err := encodeImage(dst); err != nil {
 		log.Fatalf("Error encoding the output image: %v", err)
 	}
+
+	setValue, _ := json.Marshal(dets)
+	conn.SetKey(userInput, setValue)
 
 	return dets
 }
