@@ -1,8 +1,6 @@
 package detector
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"image/color"
@@ -56,26 +54,15 @@ var (
 	mouthCascade = []string{"lp93", "lp84", "lp82", "lp81"}
 )
 
-func getBytes(key interface{}) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(key)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-
-}
-
 // DetectFaces ....
-func DetectFaces(userInput string) []Detection {
-	reader, err := os.Open(userInput)
+func DetectFaces(imagePath string) []Detection {
+	reader, err := os.Open(imagePath)
 	if err != nil {
 		log.Fatalf("Error in reading the image file: %v", err)
 	}
 
 	conn := redis.CreateConnection(0)
-	value, err := conn.GetKey(userInput)
+	value, err := conn.GetKey(imagePath)
 	if err != nil {
 		log.Fatalf("Error in connecting to redis: %v", err)
 	}
@@ -94,7 +81,7 @@ func DetectFaces(userInput string) []Detection {
 	}
 
 	var dst io.Writer
-	fn, err := os.OpenFile("out.jpg", os.O_CREATE|os.O_WRONLY, 0755)
+	fn, err := os.OpenFile(imagePath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		log.Fatalf("Unable to open output file: %v", err)
 	}
@@ -121,7 +108,7 @@ func DetectFaces(userInput string) []Detection {
 	}
 
 	setValue, _ := json.Marshal(dets)
-	conn.SetKey(userInput, setValue)
+	conn.SetKey(imagePath, setValue)
 
 	return dets
 }

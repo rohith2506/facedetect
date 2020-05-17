@@ -1,15 +1,25 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
+	"errors"
+	image "image/jpeg"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
+	pigo "github.com/esimov/pigo/core"
 	"github.com/gin-gonic/gin"
 	detector "github.com/rohith2506/facedetect/detector"
+	utilities "github.com/rohith2506/facedetect/utilities"
+)
+
+const (
+	imageBaseDir = "/tmp"
+	temporaryDir = "/temporary"
 )
 
 func main() {
@@ -29,6 +39,38 @@ func main() {
 	s.ListenAndServe()
 }
 
+func storeTemporaryImage(imagePath string) ([]uint8, error) {
+	reader, err := os.Open(imagePath)
+	if err != nil {
+		return nil, err
+	}
+	img, err := image.Decode(reader)
+	if err != nil {
+		return nil, err
+	}
+	src := pigo.ImgToNRGBA(img)
+	pixels := pigo.RgbToGrayscale(src)
+	return pixels, nil
+}
+
+func checkExistingImage(imagePath string) []Detection {
+	pixels, err := storeTemporaryImage(imagePath)
+	if err != nil {
+		return nil
+	}
+	conn := redis.CreateConnection(0)
+	pixelBytes, _ := json.Marshal(pixels)
+	value, err := conn.GetKey(string(pixelBytes))
+	if len(value) != 0 {
+		var dets []Detection
+		if err := json.Unmarshal([]byte(value), &dets); err != nil {
+			return nil
+		}
+		return dets
+	}
+	return nil
+}
+
 func imageUploadHandler(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -36,45 +78,60 @@ func imageUploadHandler(c *gin.Context) {
 		return
 	}
 
-	filename := filepath.Join("/tmp", file.Filename)
+	imageID := utilities.RandStringBytes()
+	imageFileName := imageID + "_" + file.Filename
+	filename := filepath.Join(imageBaseDir, imageFileName)
 	if err := c.SaveUploadedFile(file, filename); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	detections := detector.DetectFaces("/tmp/" + file.Filename)
+
+	imagePath := imageBaseDir + "/" + temporaryDir + "/" + imageFileName
+
+	detections := detector.DetectFaces(imagePath)
 
 	c.JSON(http.StatusOK, gin.H{"facial landmarks": detections})
 }
 
 func imagePostHandler(c *gin.Context) {
-	imageURL := c.PostForm("image_url")
-	fmt.Println("image URL: ", imageURL)
+	availableExtensions := []string{".jpeg", ".jpg", ".png"}
 
-	if len(imageURL) != 0 {
-		response, err := http.Get(imageURL)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
-			return
-		}
-		defer response.Body.Close()
-
-		file, err := os.Create("/tmp/dummy.jpg")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
-			return
-		}
-		defer file.Close()
-
-		_, err = io.Copy(file, response.Body)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
-			return
-		}
-
-		detections := detector.DetectFaces("/tmp/dummy.jpg")
-		c.JSON(http.StatusOK, gin.H{"result": detections})
-	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty url"})
+	rawImageURL := c.PostForm("image_url")
+	imageURL, err := url.ParseRequestURI(rawImageURL)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"invalid_url_error": err})
+		return
 	}
-	return
+
+	imageExtension := filepath.Ext(imageURL.Path)
+	_, found := utilities.Find(availableExtensions, imageExtension)
+	if !found {
+		c.JSON(http.StatusBadRequest, gin.H{"invalid_image_extension": errors.New("possible extensions are [jpg, jpeg, png]")})
+		return
+	}
+
+	response, err := http.Get(rawImageURL)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+	defer response.Body.Close()
+
+	imageID := utilities.RandStringBytes()
+	imagePath := imageBaseDir + "/" + imageID + imageExtension
+	file, err := os.Create(imagePath)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	detections := detector.DetectFaces(imagePath)
+	c.JSON(http.StatusOK, gin.H{"result": detections})
 }
