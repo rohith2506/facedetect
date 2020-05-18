@@ -1,0 +1,17 @@
+language: go
+
+branches:
+  only:
+    - "master"
+
+go:
+  - 1.14.x
+  - 1.13.x
+  - 1.12.x
+  - 1.11.x
+  - tip
+
+notifications:
+  email:
+    on_success: never
+    on_failure: never
