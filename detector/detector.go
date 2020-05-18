@@ -1,7 +1,6 @@
 package detector
 
 import (
-	"encoding/json"
 	"errors"
 	"image/color"
 	"image/jpeg"
@@ -16,7 +15,6 @@ import (
 
 	pigo "github.com/esimov/pigo/core"
 	"github.com/fogleman/gg"
-	redis "github.com/rohith2506/facedetect/redis"
 )
 
 type coord struct {
@@ -31,12 +29,18 @@ type rectCoord struct {
 	Length int `json:"length,omitempty"`
 }
 
-// Detection holds the detection points of the various detection types
+// Detection ...
 type Detection struct {
 	FacePoints rectCoord `json:"face,omitempty"`
 	LeftEye    coord     `json:"left_eye,omitempty"`
 	RightEye   coord     `json:"right_eye,omitempty"`
 	Mouth      []coord   `json:"mouth,omitempty"`
+}
+
+// RedisOutput ...
+type RedisOutput struct {
+	dets      []Detection `json:"result,omitempty"`
+	imagePath string      `json:"image_path,omitempty"`
 }
 
 var (
@@ -48,48 +52,47 @@ var (
 	flpcs            map[string][]*pigo.FlpCascade
 	imgParams        *pigo.ImageParams
 	err              error
+	dst              io.Writer
 )
 
 var (
 	mouthCascade = []string{"lp93", "lp84", "lp82", "lp81"}
 )
 
-// DetectFaces ....
-func DetectFaces(imagePath string) []Detection {
-	reader, err := os.Open(imagePath)
-	if err != nil {
-		log.Fatalf("Error in reading the image file: %v", err)
-	}
+const (
+	outputDir = "/var/images/out/"
+	inputDir  = "/var/images/in/"
+)
 
-	conn := redis.CreateConnection(0)
-	value, err := conn.GetKey(imagePath)
-	if err != nil {
-		log.Fatalf("Error in connecting to redis: %v", err)
-	}
-
-	if len(value) != 0 {
-		var dets []Detection
-		if err := json.Unmarshal([]byte(value), &dets); err != nil {
-			log.Fatalf("Error in retrieving data from redis: %v", err)
-		}
-		return dets
-	}
-
-	img, err := image.Decode(reader)
-	if err != nil {
-		log.Fatalf("Error in decoding the image: %v", err)
-	}
-
-	var dst io.Writer
-	fn, err := os.OpenFile(imagePath, os.O_CREATE|os.O_WRONLY, 0755)
+// create output file
+func createOutputFile(imagePath string) {
+	fn, err := os.OpenFile(outputDir+imagePath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		log.Fatalf("Unable to open output file: %v", err)
 	}
 	defer fn.Close()
 	dst = fn
+}
 
+// DetectFaces ....
+func DetectFaces(imagePath string) *RedisOutput {
+	// Read the image from input location
+	reader, err := os.Open(inputDir + imagePath)
+	if err != nil {
+		log.Fatalf("Error in reading the image file: %v", err)
+	}
+
+	// Decode the image
+	img, err := image.Decode(reader)
+	if err != nil {
+		log.Fatalf("Error in decoding the image: %v", err)
+	}
+
+	// Create output file path
+	createOutputFile(imagePath)
+
+	// Analyse the image
 	src := pigo.ImgToNRGBA(img)
-
 	pixels := pigo.RgbToGrayscale(src)
 	cols, rows := src.Bounds().Max.X, src.Bounds().Max.Y
 
@@ -107,10 +110,14 @@ func DetectFaces(imagePath string) []Detection {
 		log.Fatalf("Error encoding the output image: %v", err)
 	}
 
-	setValue, _ := json.Marshal(dets)
-	conn.SetKey(imagePath, setValue)
+	// Store the result in cache
+	result := &RedisOutput{
+		dets:      dets,
+		imagePath: outputDir + imagePath,
+	}
 
-	return dets
+	// return result
+	return result
 }
 
 func drawFaces(faces []pigo.Detection) ([]Detection, error) {
