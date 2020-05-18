@@ -116,6 +116,12 @@ func ImageUploadHandler(c *gin.Context) {
 	// temporary image
 	uniqueImageID := utilities.RandStringBytes()
 	imageExtension := filepath.Ext(file.Filename)
+	_, found := utilities.Find(availableExtensions, imageExtension)
+	if !found {
+		c.JSON(http.StatusBadRequest, gin.H{"invalid image extension": "possible extensions are [jpg, jpeg, png]"})
+		return
+	}
+
 	tempImage := tempDir + uniqueImageID + imageExtension
 
 	// Create a temporary file

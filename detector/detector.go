@@ -34,7 +34,7 @@ type rectCoord struct {
 
 // Detection ...
 type Detection struct {
-	FacePoints rectCoord `json:"face,omitempty"`
+	FacePoints rectCoord `json:"bounds,omitempty"`
 	LeftEye    coord     `json:"left_eye,omitempty"`
 	RightEye   coord     `json:"right_eye,omitempty"`
 	Mouth      []coord   `json:"mouth,omitempty"`

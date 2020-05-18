@@ -7,12 +7,16 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
   <title>Face Detection App</title>
   <script>
-
-    
+    var nre;
     function showFacialLandMarks(output) {
-      var responseString = JSON.stringify(output.landmarks, null, 4)
+      result = {
+        "Faces": output.landmarks
+      }
+      var responseString = JSON.stringify(result, null, 4)
       if(responseString == "null") {
-        $('#response').html(JSON.stringify("Unable to detect any facial landmarks. Image is either angular (or) faces are not that clear"));
+        $('#response').html(JSON.stringify("Unable to detect any facial landmarks." +
+            "Image is either angular (or) rotated (or) faces are not that clear." + 
+            "A CNN model will be deployed soon."));
       } else {
         $('#response').html(responseString);
       }
@@ -22,8 +26,7 @@
 
     $(document).ready(function() {
       $("form#files").submit(function(e) {
-          e.preventDefault();    
-          $("form#files").hide();
+          e.preventDefault();
           var formData = new FormData(this);
           $.ajax({
               url: window.location.pathname + "upload",
@@ -31,17 +34,26 @@
               dataType: "json",
               contentType: "application/json; charset=utf-8",
               data: formData,
+              beforeSend: function() {
+                var i = 0;
+                var loadMethod = function() {
+                  i = ++i % 4;
+                  $("#response").html("loading"+Array(i+1).join("."));
+                };
+                nre = setInterval(loadMethod, 500);
+              },
               success: function (output) {
+                clearInterval(nre);
                 showFacialLandMarks(output)
               },
               error: function (jqXHR, textStatus, errorThrown) { 
+                clearInterval(nre);
                 $("#response").html(jqXHR.responseText);
               },
               cache: false,
               contentType: false,
               processData: false
           });
-          $("form#files").show();
         }); 
       $("form#url").submit(function(e) {
           e.preventDefault();    
@@ -52,10 +64,20 @@
               dataType: "json",
               contentType: "application/json; charset=utf-8",
               data: formData,
+              beforeSend: function() {
+                var i = 0;
+                var loadMethod = function() {
+                  i = ++i % 4;
+                  $("#response").html("loading"+Array(i+1).join("."));
+                };
+                nre = setInterval(loadMethod, 500);
+              },
               success: function (output) {
+                clearInterval(nre);
                 showFacialLandMarks(output)
               },
               error: function(jqXHR, textStatus, errorThrown) {
+                clearInterval(nre);
                 $("#response").html(jqXHR.responseText);
               },
               cache: false,
