@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	static "github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	detector "github.com/rohith2506/facedetect/detector"
 	redis "github.com/rohith2506/facedetect/redis"
@@ -42,7 +43,9 @@ func main() {
 		MaxHeaderBytes: 1 << 20,
 	}
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
-	router.Static("/", "./templates")
+	router.Use(static.Serve("/", static.LocalFile("./templates", true)))
+	router.Use(static.Serve("/images", static.LocalFile("/tmp/images/out", true)))
+
 	router.POST("/upload", imageUploadHandler)
 	router.POST("/submit", imagePostHandler)
 
@@ -104,7 +107,8 @@ func imageUploadHandler(c *gin.Context) {
 
 	// temporary image
 	uniqueImageID := utilities.RandStringBytes()
-	tempImage := tempDir + uniqueImageID
+	imageExtension := filepath.Ext(file.Filename)
+	tempImage := tempDir + uniqueImageID + imageExtension
 
 	// Create a temporary file
 	err = createTempFile(file, nil, tempImage)
@@ -128,7 +132,7 @@ func imageUploadHandler(c *gin.Context) {
 
 	// Return from cache
 	if cacheOutput != nil {
-		c.JSON(http.StatusOK, gin.H{"result": cacheOutput.Landmarks})
+		c.JSON(http.StatusOK, gin.H{"landmarks": cacheOutput.Landmarks, "output_file": cacheOutput.ImagePath})
 	} else {
 		// run the algorithm
 		output := detector.DetectFaces(imageHash, tempImage)
@@ -139,7 +143,7 @@ func imageUploadHandler(c *gin.Context) {
 		if err != nil {
 			log.Panicf("Error in redis set: %v", err)
 		}
-		c.JSON(http.StatusOK, gin.H{"result": output.Landmarks})
+		c.JSON(http.StatusOK, gin.H{"landmarks": output.Landmarks, "output_file": output.ImagePath})
 	}
 
 	// delete the temporary image
@@ -175,7 +179,7 @@ func imagePostHandler(c *gin.Context) {
 
 	// temporary image
 	uniqueImageID := utilities.RandStringBytes()
-	tempImage := tempDir + uniqueImageID
+	tempImage := tempDir + uniqueImageID + imageExtension
 
 	// create the temporary image
 	err = createTempFile(nil, response, tempImage)
@@ -199,7 +203,7 @@ func imagePostHandler(c *gin.Context) {
 
 	// Return from cache
 	if cacheOutput != nil {
-		c.JSON(http.StatusOK, gin.H{"result": cacheOutput.Landmarks})
+		c.JSON(http.StatusOK, gin.H{"landmarks": cacheOutput.Landmarks, "output_file": cacheOutput.ImagePath})
 	} else {
 		// Run the algorithm
 		output := detector.DetectFaces(imageHash, tempImage)
@@ -210,7 +214,7 @@ func imagePostHandler(c *gin.Context) {
 		if err != nil {
 			log.Panicf("Error in redis set: %v", err)
 		}
-		c.JSON(http.StatusOK, gin.H{"result": output.Landmarks})
+		c.JSON(http.StatusOK, gin.H{"landmarks": output.Landmarks, "output_file": output.ImagePath})
 	}
 
 	// Delete the temp file

@@ -1,18 +1,101 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Upload the Image</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+  <title>Face Detection App</title>
+  <script>
+    $(document).ready(function() {
+      $("form#files").submit(function(e) {
+          e.preventDefault();    
+          var formData = new FormData(this);
+          $.ajax({
+              url: window.location.pathname + "upload",
+              type: 'POST',
+              dataType: "json",
+              contentType: "application/json; charset=utf-8",
+              data: formData,
+              success: function (output) {
+                $('#response').html(JSON.stringify(output.landmarks, null, 4));
+                console.log(output)
+                $("#resultImage").attr("src", './images/' + output.output_file);
+              },
+              cache: false,
+              contentType: false,
+              processData: false
+          });
+      }); 
+      $("form#url").submit(function(e) {
+          e.preventDefault();    
+          var formData = new FormData(this);
+          $.ajax({
+              url: window.location.pathname + "submit",
+              type: 'POST',
+              dataType: "json",
+              contentType: "application/json; charset=utf-8",
+              data: formData,
+              success: function (output) {
+                $('#response').html(JSON.stringify(output.landmarks, null, 4));
+                $("#resultImage").attr("src", './images/' + output.output_file);
+              },
+              cache: false,
+              contentType: false,
+              processData: false
+          });
+      }); 
+    });
+  </script>
 </head>
 <body>
-<h1>Image Upload</h1>
-<form action="/upload" method="post" enctype="multipart/form-data">
-  Image: <input type="file" name="file"><br><br>
-  <input type="submit" value="Submit">
-</form>
-<br><br><br>
-<form action="/submit" method="post">
-  Image url: <input type="url" name="image_url"><br><br>
-  <input type="submit" value="Submit">
-</form>
+<div class="container">
+  <div class="centered">
+    <h1 class="text-center">Face Detection App</h1>
+  </div>
+</div>
+
+<br/><br/><br/><br/>
+<div class="container">
+  <div class="col">
+    <div class="col-xs-6">
+      <form id="files" action="/upload" method="post" enctype="multipart/form-data">
+        <h5>Upload Image </h5>
+        <label class="btn btn-default btn-file">
+          Browse <input type="file" name="file" style="display: none;">
+        </label>
+        <button type="submit" class="btn btn-primary">Submit</button>    
+        </form>
+    </div>
+  </div>
+  <div class="col">
+    <div class="col-xs-6">
+      <form id="url" action="/submit" method="post" class="form-inline">
+        <h5>Image URL </h5>
+        <input type="text" name="image_url" class="form-control mb-2 mr-sm-2 mb-sm-0" size="60">
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<br/><br/><br/><br/><br/><br/><br/><br/>
+<div class="container">
+  <div class="col">
+    <div class="col-xs-6">
+        <h5>Image</h5>
+        <figure class="figure">
+          <img id="resultImage" src="./images/demo.png" class="figure-img img-fluid rounded">
+        </figure>  
+    </div>
+  </div>
+  <div class="col">
+    <div class="col-xs-6">
+      <div class="form-group">
+        <label for="exampleTextarea">Results</label>
+        <textarea class="form-control" id="response" name="results" rows="10"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
 </body>

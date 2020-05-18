@@ -2,9 +2,10 @@ package detector
 
 import (
 	"errors"
+	"fmt"
+	"image"
 	"image/color"
 	"image/jpeg"
-	image "image/jpeg"
 	"image/png"
 	"io"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 
 	pigo "github.com/esimov/pigo/core"
 	"github.com/fogleman/gg"
+	"github.com/nfnt/resize"
 )
 
 type coord struct {
@@ -66,6 +68,7 @@ const (
 
 // create output file
 func createOutputFile(imagePath string) {
+	fmt.Println("output file name: ", imagePath)
 	fn, err = os.OpenFile(outputDir+imagePath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		log.Fatalf("Unable to open output file: %v", err)
@@ -81,13 +84,16 @@ func DetectFaces(imageHash string, imagePath string) *ImageOutput {
 	}
 
 	// Decode the image
-	img, err := image.Decode(reader)
+	fmt.Println(imagePath)
+	img, _, err := image.Decode(reader)
 	if err != nil {
 		log.Fatalf("Error in decoding the image: %v", err)
 	}
 
 	// Create output file path
-	createOutputFile(imageHash)
+	imageExtension := filepath.Ext(imagePath)
+	outputImagePath := imageHash + imageExtension
+	createOutputFile(outputImagePath)
 
 	// Analyse the image
 	src := pigo.ImgToNRGBA(img)
@@ -112,7 +118,7 @@ func DetectFaces(imageHash string, imagePath string) *ImageOutput {
 	// Store the result in cache
 	result := &ImageOutput{
 		Landmarks: landmarks,
-		ImagePath: outputDir + imageHash,
+		ImagePath: outputImagePath,
 	}
 
 	return result
@@ -236,20 +242,21 @@ func drawFaces(faces []pigo.Detection) ([]Detection, error) {
 func encodeImage(dst io.Writer) error {
 	var err error
 	img := dc.Image()
+	newImage := resize.Resize(400, 300, img, resize.Lanczos3)
 
 	switch dst.(type) {
 	case *os.File:
 		ext := filepath.Ext(dst.(*os.File).Name())
 		switch ext {
 		case "", ".jpg", ".jpeg":
-			err = jpeg.Encode(dst, img, &jpeg.Options{Quality: 100})
+			err = jpeg.Encode(dst, newImage, &jpeg.Options{Quality: 100})
 		case ".png":
-			err = png.Encode(dst, img)
+			err = png.Encode(dst, newImage)
 		default:
 			err = errors.New("unsupported image format")
 		}
 	default:
-		err = jpeg.Encode(dst, img, &jpeg.Options{Quality: 100})
+		err = jpeg.Encode(dst, newImage, &jpeg.Options{Quality: 100})
 	}
 	return err
 }
