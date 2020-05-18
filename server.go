@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -116,6 +117,7 @@ func ImageUploadHandler(c *gin.Context) {
 	// temporary image
 	uniqueImageID := utilities.RandStringBytes()
 	imageExtension := filepath.Ext(file.Filename)
+	fmt.Println("image extension: ", imageExtension)
 	_, found := utilities.Find(availableExtensions, imageExtension)
 	if !found {
 		c.JSON(http.StatusBadRequest, gin.H{"invalid image extension": "possible extensions are [jpg, jpeg, png]"})
