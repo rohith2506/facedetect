@@ -4,7 +4,7 @@ facedetect is a pure Go face detection API which depends on [pigo](https://githu
 For more information on pigo, follow the above github source code (or) read this paper (https://arxiv.org/pdf/1305.4537.pdf). 
 
 ### Demo
-[demo](https://imageplaceHolder)
+[!demo](test_images/demo.png)
 
 
 ### Explanation
