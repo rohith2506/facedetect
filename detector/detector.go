@@ -37,10 +37,10 @@ type Detection struct {
 	Mouth      []coord   `json:"mouth,omitempty"`
 }
 
-// RedisOutput ...
-type RedisOutput struct {
-	dets      []Detection `json:"result,omitempty"`
-	imagePath string      `json:"image_path,omitempty"`
+// ImageOutput ...
+type ImageOutput struct {
+	Landmarks []Detection `json:"result,omitempty"`
+	ImagePath string      `json:"image_path,omitempty"`
 }
 
 var (
@@ -53,6 +53,7 @@ var (
 	imgParams        *pigo.ImageParams
 	err              error
 	dst              io.Writer
+	fn               *os.File
 )
 
 var (
@@ -60,24 +61,21 @@ var (
 )
 
 const (
-	outputDir = "/var/images/out/"
-	inputDir  = "/var/images/in/"
+	outputDir = "/tmp/images/out/"
 )
 
 // create output file
 func createOutputFile(imagePath string) {
-	fn, err := os.OpenFile(outputDir+imagePath, os.O_CREATE|os.O_WRONLY, 0755)
+	fn, err = os.OpenFile(outputDir+imagePath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		log.Fatalf("Unable to open output file: %v", err)
 	}
-	defer fn.Close()
 	dst = fn
 }
 
 // DetectFaces ....
-func DetectFaces(imagePath string) *RedisOutput {
-	// Read the image from input location
-	reader, err := os.Open(inputDir + imagePath)
+func DetectFaces(imageHash string, imagePath string) *ImageOutput {
+	reader, err := os.Open(imagePath)
 	if err != nil {
 		log.Fatalf("Error in reading the image file: %v", err)
 	}
@@ -89,7 +87,7 @@ func DetectFaces(imagePath string) *RedisOutput {
 	}
 
 	// Create output file path
-	createOutputFile(imagePath)
+	createOutputFile(imageHash)
 
 	// Analyse the image
 	src := pigo.ImgToNRGBA(img)
@@ -101,7 +99,7 @@ func DetectFaces(imagePath string) *RedisOutput {
 
 	faces := findFaces(pixels, rows, cols)
 
-	dets, err := drawFaces(faces)
+	landmarks, err := drawFaces(faces)
 	if err != nil {
 		log.Fatalf("Error in drawing faces: %v", err)
 	}
@@ -109,14 +107,14 @@ func DetectFaces(imagePath string) *RedisOutput {
 	if err := encodeImage(dst); err != nil {
 		log.Fatalf("Error encoding the output image: %v", err)
 	}
+	defer fn.Close()
 
 	// Store the result in cache
-	result := &RedisOutput{
-		dets:      dets,
-		imagePath: outputDir + imagePath,
+	result := &ImageOutput{
+		Landmarks: landmarks,
+		ImagePath: outputDir + imageHash,
 	}
 
-	// return result
 	return result
 }
 

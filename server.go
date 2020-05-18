@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -18,9 +19,10 @@ import (
 )
 
 const (
-	tempDir  = "/var/images/tmp/"
-	inputDir = "/var/images/in/"
-	redisDB  = 0
+	inputDir = "/tmp/images/in/"
+	tempDir  = "/tmp/images/temporary/"
+
+	redisDB = 0
 )
 
 var redisConn *redis.Connection
@@ -47,8 +49,8 @@ func main() {
 	s.ListenAndServe()
 }
 
-func getExistingImage(imageHash string) (*detector.RedisOutput, error) {
-	var redisOutput *detector.RedisOutput
+func getExistingImage(imageHash string) (*detector.ImageOutput, error) {
+	var output *detector.ImageOutput
 
 	if redisConn == nil {
 		redisConn = redis.CreateConnection(redisDB)
@@ -57,48 +59,37 @@ func getExistingImage(imageHash string) (*detector.RedisOutput, error) {
 	// Get the value from redis
 	value, err := redisConn.GetKey(imageHash)
 	if err != nil {
-		return redisOutput, err
+		return output, err
 	}
 
 	// There is no existing key present. Just return nil
 	if len(value) == 0 {
-		return redisOutput, nil
+		return output, nil
 	}
 
 	// Parse the value to custom struct
-	if err := json.Unmarshal([]byte(value), &redisOutput); err != nil {
-		return redisOutput, err
+	if err := json.Unmarshal([]byte(value), &output); err != nil {
+		return output, err
 	}
-	return redisOutput, nil
+	return output, nil
 }
 
-// store the input image
-func storeUploadedImage(file *multipart.FileHeader, c *gin.Context) (string, error) {
-	uniqueImageID := utilities.RandStringBytes()
-	imagePath := uniqueImageID + "_" + file.Filename
-	imageAbsPath := filepath.Join(inputDir, imagePath)
-	if err := c.SaveUploadedFile(file, imageAbsPath); err != nil {
-		return "", err
+func createTempFile(multipartFile *multipart.FileHeader, response *http.Response, imagePath string) error {
+	if multipartFile == nil && response == nil {
+		return errors.New("Both Upload and URL retrieval are empty")
 	}
-	return imagePath, nil
-}
-
-// store the url submitted image
-func storeURLImage(response *http.Response, imageExtension string) (string, error) {
-	var imagePath string
-	uniqueImageID := utilities.RandStringBytes()
-	imagePath = uniqueImageID + imageExtension
-	file, err := os.Create(inputDir + "/" + imagePath)
-	if err != nil {
-		return imagePath, err
-	}
+	file, err := os.Create(imagePath)
 	defer file.Close()
-
-	_, err = io.Copy(file, response.Body)
-	if err != nil {
-		return imagePath, err
+	if multipartFile == nil {
+		_, err = io.Copy(file, response.Body)
+	} else {
+		temp, _ := multipartFile.Open()
+		_, err = io.Copy(file, temp)
 	}
-	return imagePath, nil
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -107,46 +98,53 @@ When image gets uploaded
 func imageUploadHandler(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"invalid input file error": err.Error()})
+		return
+	}
+
+	// temporary image
+	uniqueImageID := utilities.RandStringBytes()
+	tempImage := tempDir + uniqueImageID
+
+	// Create a temporary file
+	err = createTempFile(file, nil, tempImage)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"temp file creation error": err.Error()})
 		return
 	}
 
 	// get the image hash
-	imageHash, err := utilities.GetImageHash(2, nil, file)
+	imageHash, err := utilities.GetImageHash(tempImage)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"file hash error": err.Error()})
 		return
 	}
 
 	// Find whether there is an existing image or not
-	result, err := getExistingImage(imageHash)
+	cacheOutput, err := getExistingImage(imageHash)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Redis get key error": err.Error()})
-		return
+		log.Panicf("Error in redis get: %v", err)
 	}
 
 	// Return from cache
-	if result != nil {
-		c.JSON(http.StatusOK, gin.H{"result": result})
-		return
+	if cacheOutput != nil {
+		c.JSON(http.StatusOK, gin.H{"result": cacheOutput.Landmarks})
+	} else {
+		// run the algorithm
+		output := detector.DetectFaces(imageHash, tempImage)
+
+		// Cache the image
+		value, _ := json.Marshal(output)
+		err = redisConn.SetKey(imageHash, value)
+		if err != nil {
+			log.Panicf("Error in redis set: %v", err)
+		}
+		c.JSON(http.StatusOK, gin.H{"result": output.Landmarks})
 	}
 
-	// Store the image in /var/images/in
-	imagePath, err := storeUploadedImage(file, c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"image store error": err})
-	}
-
-	detections := detector.DetectFaces(imagePath)
-
-	// Cache the image
-	value, _ := json.Marshal(result)
-	err = redisConn.SetKey(imageHash, value)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Redis set key error": err.Error()})
-	}
-
-	c.JSON(http.StatusOK, gin.H{"facial landmarks": detections})
+	// delete the temporary image
+	err = os.Remove(tempImage)
+	return
 }
 
 /*
@@ -163,7 +161,7 @@ func imagePostHandler(c *gin.Context) {
 	imageExtension := filepath.Ext(imageURL.Path)
 	_, found := utilities.Find(availableExtensions, imageExtension)
 	if !found {
-		c.JSON(http.StatusBadRequest, gin.H{"invalid_image_extension": errors.New("possible extensions are [jpg, jpeg, png]")})
+		c.JSON(http.StatusBadRequest, gin.H{"invalid_image_extension": "possible extensions are [jpg, jpeg, png]"})
 		return
 	}
 
@@ -175,41 +173,47 @@ func imagePostHandler(c *gin.Context) {
 	}
 	defer response.Body.Close()
 
-	// check whether the image exists in cache or not
+	// temporary image
+	uniqueImageID := utilities.RandStringBytes()
+	tempImage := tempDir + uniqueImageID
+
+	// create the temporary image
+	err = createTempFile(nil, response, tempImage)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"temp file creation error": err.Error()})
+		return
+	}
+
 	// get the image hash
-	imageHash, err := utilities.GetImageHash(2, response, nil)
+	imageHash, err := utilities.GetImageHash(tempImage)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"file hash error": err.Error()})
 		return
 	}
 
 	// Find whether there is an existing image or not
-	result, err := getExistingImage(imageHash)
+	cacheOutput, err := getExistingImage(imageHash)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Redis get key error": err.Error()})
-		return
+		log.Panicf("Error in redis get: %v", err)
 	}
 
 	// Return from cache
-	if result != nil {
-		c.JSON(http.StatusOK, gin.H{"result": result})
-		return
+	if cacheOutput != nil {
+		c.JSON(http.StatusOK, gin.H{"result": cacheOutput.Landmarks})
+	} else {
+		// Run the algorithm
+		output := detector.DetectFaces(imageHash, tempImage)
+
+		// Cache the image
+		value, _ := json.Marshal(output)
+		err = redisConn.SetKey(imageHash, value)
+		if err != nil {
+			log.Panicf("Error in redis set: %v", err)
+		}
+		c.JSON(http.StatusOK, gin.H{"result": output.Landmarks})
 	}
 
-	// store the image in /var/images/in
-	imagePath, err := storeURLImage(response, imageExtension)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"image store error": err})
-	}
-
-	result = detector.DetectFaces(imagePath)
-
-	// Cache the image
-	value, _ := json.Marshal(result)
-	err = redisConn.SetKey(imageHash, value)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Redis set key error": err.Error()})
-	}
-
-	c.JSON(http.StatusOK, gin.H{"result": result})
+	// Delete the temp file
+	err = os.Remove(tempImage)
+	return
 }
