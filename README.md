@@ -105,6 +105,7 @@ Future work includes
 1. Integrate / build modules which support pretrained deep learning models to infer / predict from.
 2. Dockerize it such that all dependencies coupled together in one single image. This is especially useful if we chose to write bindings and needs to install third party libraries such as OpenCV etc..
 3. Realtime facial detection.
+4. Better unit tests. For example, replace real redis connection with mock connection.
 
 ## Author
 
