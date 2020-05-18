@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -32,7 +33,8 @@ var (
 	availableExtensions = []string{".jpeg", ".jpg", ".png"}
 )
 
-func main() {
+// SetupRouter ...
+func SetupRouter() *gin.Engine {
 	router := gin.Default()
 	redisConn = redis.CreateConnection(redisDB)
 	s := &http.Server{
@@ -46,10 +48,15 @@ func main() {
 	router.Use(static.Serve("/", static.LocalFile("./templates", true)))
 	router.Use(static.Serve("/images", static.LocalFile("/tmp/images/out", true)))
 
-	router.POST("/upload", imageUploadHandler)
-	router.POST("/submit", imagePostHandler)
+	router.POST("/upload", ImageUploadHandler)
+	router.POST("/submit", ImagePostHandler)
 
 	s.ListenAndServe()
+	return router
+}
+
+func main() {
+	SetupRouter()
 }
 
 func getExistingImage(imageHash string) (*detector.ImageOutput, error) {
@@ -96,9 +103,10 @@ func createTempFile(multipartFile *multipart.FileHeader, response *http.Response
 }
 
 /*
+ImageUploadHandler ...
 When image gets uploaded
 */
-func imageUploadHandler(c *gin.Context) {
+func ImageUploadHandler(c *gin.Context) {
 	start := time.Now()
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -164,11 +172,13 @@ func imageUploadHandler(c *gin.Context) {
 }
 
 /*
+ImagePostHandler ...
 when image gets submitted via URL
 */
-func imagePostHandler(c *gin.Context) {
+func ImagePostHandler(c *gin.Context) {
 	start := time.Now()
 	rawImageURL := c.PostForm("image_url")
+	fmt.Println("image url: " + rawImageURL)
 	imageURL, err := url.ParseRequestURI(rawImageURL)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"invalid url": err})
