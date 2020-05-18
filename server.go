@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	inputDir = "/tmp/images/in/"
-	tempDir  = "/tmp/images/temporary/"
+	tempDir = "/tmp/images/temporary/"
 
 	redisDB = 0
 )

@@ -13,7 +13,7 @@
         "Faces": output.landmarks
       }
       var responseString = JSON.stringify(result, null, 4)
-      if(responseString == "null") {
+      if(JSON.stringify(output.landmarks) == "null") {
         $('#response').html(JSON.stringify("Unable to detect any facial landmarks." +
             "Image is either angular (or) rotated (or) faces are not that clear." + 
             "A CNN model will be deployed soon."));
