@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -33,9 +32,22 @@ var (
 	availableExtensions = []string{".jpeg", ".jpg", ".png"}
 )
 
-// SetupRouter ...
+// SetupRouter setups the default gin router
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
+	router.MaxMultipartMemory = 8 << 20 // 8 MiB
+	router.Use(static.Serve("/", static.LocalFile("./templates", true)))
+	router.Use(static.Serve("/images", static.LocalFile("/tmp/images/out", true)))
+
+	router.POST("/upload", ImageUploadHandler)
+	router.POST("/submit", ImagePostHandler)
+
+	return router
+}
+
+// Main function
+func main() {
+	router := SetupRouter()
 	redisConn = redis.CreateConnection(redisDB)
 	s := &http.Server{
 		Addr:           ":8000",
@@ -44,21 +56,10 @@ func SetupRouter() *gin.Engine {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-	router.MaxMultipartMemory = 8 << 20 // 8 MiB
-	router.Use(static.Serve("/", static.LocalFile("./templates", true)))
-	router.Use(static.Serve("/images", static.LocalFile("/tmp/images/out", true)))
-
-	router.POST("/upload", ImageUploadHandler)
-	router.POST("/submit", ImagePostHandler)
-
 	s.ListenAndServe()
-	return router
 }
 
-func main() {
-	SetupRouter()
-}
-
+// Checks whether the image already exists in codebase
 func getExistingImage(imageHash string) (*detector.ImageOutput, error) {
 	var output *detector.ImageOutput
 
@@ -84,6 +85,7 @@ func getExistingImage(imageHash string) (*detector.ImageOutput, error) {
 	return output, nil
 }
 
+// create the temporary image
 func createTempFile(multipartFile *multipart.FileHeader, response *http.Response, imagePath string) error {
 	if multipartFile == nil && response == nil {
 		return errors.New("Both Upload and URL retrieval are empty")
@@ -102,10 +104,7 @@ func createTempFile(multipartFile *multipart.FileHeader, response *http.Response
 	return nil
 }
 
-/*
-ImageUploadHandler ...
-When image gets uploaded
-*/
+// ImageUploadHandler endpoint is responsible for handling uploaded images
 func ImageUploadHandler(c *gin.Context) {
 	start := time.Now()
 	file, err := c.FormFile("file")
@@ -171,14 +170,11 @@ func ImageUploadHandler(c *gin.Context) {
 	return
 }
 
-/*
-ImagePostHandler ...
-when image gets submitted via URL
-*/
+// ImagePostHandler endpoint is responsible for handling URL images
 func ImagePostHandler(c *gin.Context) {
 	start := time.Now()
 	rawImageURL := c.PostForm("image_url")
-	fmt.Println("image url: " + rawImageURL)
+
 	imageURL, err := url.ParseRequestURI(rawImageURL)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"invalid url": err})
