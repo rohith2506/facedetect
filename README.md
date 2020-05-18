@@ -46,6 +46,7 @@ $ redis-server
 ```bash
 $ go get -u -f github.com/rohith2506/facedetect
 $ go build
+$ export GIN_MODE=release # No need of this export for debug mode
 $ ./facedetect
 ```
 
