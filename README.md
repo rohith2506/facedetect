@@ -25,6 +25,7 @@ Install Go, set your `GOPATH`, and make sure `$GOPATH/bin` is on your `PATH`.
 ```bash
 $ export GOPATH="$HOME/go"
 $ export PATH="$PATH:$GOPATH/bin"
+$ export GIN_MODE=release # No need of this export for server debug mode
 ```
 Next download the project and build the binary file.
 
@@ -46,7 +47,6 @@ $ redis-server
 ```bash
 $ go get -u -f github.com/rohith2506/facedetect
 $ go build
-$ export GIN_MODE=release # No need of this export for debug mode
 $ ./facedetect
 ```
 
