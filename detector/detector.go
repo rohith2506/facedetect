@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 
 	pigo "github.com/esimov/pigo/core"
+
 	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
 )
@@ -63,7 +64,18 @@ var (
 )
 
 const (
-	outputDir = "/tmp/images/out/"
+	outputDir         = "/tmp/images/out/"
+	cascadeFaceFinder = "cascade/facefinder"
+	cascadePuploc     = "cascade/puploc"
+	cascadeLPS        = "cascade/lps"
+	defaultAngle      = 0.0
+	iouThreshold      = 0.2
+	perturbVal        = 63
+	qThreshold        = 5.0
+	minImageSize      = 20
+	maxImageSize      = 4000
+	adjustedRows      = 400
+	adjustedCols      = 300
 )
 
 // create output file
@@ -84,7 +96,6 @@ func DetectFaces(imageHash string, imagePath string) *ImageOutput {
 	}
 
 	// Decode the image
-	fmt.Println(imagePath)
 	img, _, err := image.Decode(reader)
 	if err != nil {
 		log.Fatalf("Error in decoding the image: %v", err)
@@ -100,12 +111,16 @@ func DetectFaces(imageHash string, imagePath string) *ImageOutput {
 	pixels := pigo.RgbToGrayscale(src)
 	cols, rows := src.Bounds().Max.X, src.Bounds().Max.Y
 
+	// Create the new context to draw the image
 	dc = gg.NewContext(cols, rows)
 	dc.DrawImage(src, 0, 0)
 
+	// First detect faces
 	faces := findFaces(pixels, rows, cols)
 
+	// Draw and collect landmarks
 	landmarks, err := drawFaces(faces)
+
 	if err != nil {
 		log.Fatalf("Error in drawing faces: %v", err)
 	}
@@ -115,7 +130,6 @@ func DetectFaces(imageHash string, imagePath string) *ImageOutput {
 	}
 	defer fn.Close()
 
-	// Store the result in cache
 	result := &ImageOutput{
 		Landmarks: landmarks,
 		ImagePath: outputImagePath,
@@ -126,8 +140,8 @@ func DetectFaces(imageHash string, imagePath string) *ImageOutput {
 
 func drawFaces(faces []pigo.Detection) ([]Detection, error) {
 	var (
-		qThresh float32 = 5.0
-		perturb         = 63
+		qThresh float32 = qThreshold
+		perturb         = perturbVal
 	)
 
 	var (
@@ -140,10 +154,12 @@ func drawFaces(faces []pigo.Detection) ([]Detection, error) {
 			continue
 		}
 		var (
-			eyesCoords  []coord
-			mouthCoords []coord
+			leftEyeCoord  coord
+			rightEyeCoord coord
+			mouthCoords   []coord
 		)
 
+		// We are actually drawing a square
 		dc.DrawRectangle(
 			float64(face.Col-face.Scale/2),
 			float64(face.Row-face.Scale/2),
@@ -177,11 +193,11 @@ func drawFaces(faces []pigo.Detection) ([]Detection, error) {
 					color.RGBA{R: 255, G: 0, B: 0, A: 255},
 					true,
 				)
-				eyesCoords = append(eyesCoords, coord{
+				leftEyeCoord = coord{
 					Row:   leftEye.Row,
 					Col:   leftEye.Col,
 					Scale: int(leftEye.Scale),
-				})
+				}
 			}
 
 			// right eye
@@ -200,12 +216,12 @@ func drawFaces(faces []pigo.Detection) ([]Detection, error) {
 					color.RGBA{R: 255, G: 0, B: 0, A: 255},
 					true,
 				)
+				rightEyeCoord = coord{
+					Row:   rightEye.Row,
+					Col:   rightEye.Col,
+					Scale: int(rightEye.Scale),
+				}
 			}
-			eyesCoords = append(eyesCoords, coord{
-				Row:   rightEye.Row,
-				Col:   rightEye.Col,
-				Scale: int(rightEye.Scale),
-			})
 
 			// mouth
 			for _, mouth := range mouthCascade {
@@ -231,8 +247,8 @@ func drawFaces(faces []pigo.Detection) ([]Detection, error) {
 
 		detections = append(detections, Detection{
 			FacePoints: *faceCoord,
-			LeftEye:    eyesCoords[0],
-			RightEye:   eyesCoords[1],
+			LeftEye:    leftEyeCoord,
+			RightEye:   rightEyeCoord,
 			Mouth:      mouthCoords,
 		})
 	}
@@ -242,7 +258,7 @@ func drawFaces(faces []pigo.Detection) ([]Detection, error) {
 func encodeImage(dst io.Writer) error {
 	var err error
 	img := dc.Image()
-	newImage := resize.Resize(400, 300, img, resize.Lanczos3)
+	newImage := resize.Resize(adjustedRows, adjustedCols, img, resize.Lanczos3)
 
 	switch dst.(type) {
 	case *os.File:
@@ -271,8 +287,8 @@ func findFaces(pixels []uint8, rows, cols int) []pigo.Detection {
 		Dim:    cols,
 	}
 	cParams := pigo.CascadeParams{
-		MinSize:     20,
-		MaxSize:     4000,
+		MinSize:     minImageSize,
+		MaxSize:     maxImageSize,
 		ShiftFactor: 0.1,
 		ScaleFactor: 1.1,
 		ImageParams: *imgParams,
@@ -280,7 +296,7 @@ func findFaces(pixels []uint8, rows, cols int) []pigo.Detection {
 
 	// Ensure that the face detection classifier is loaded only once.
 	if len(cascade) == 0 {
-		cascade, err = ioutil.ReadFile("/Users/ruppala/go/src/github.com/esimov/pigo/cascade/facefinder")
+		cascade, err = ioutil.ReadFile(cascadeFaceFinder)
 		if err != nil {
 			log.Fatalf("Error reading the cascade file: %v", err)
 		}
@@ -296,7 +312,7 @@ func findFaces(pixels []uint8, rows, cols int) []pigo.Detection {
 
 	// Ensure that we load the pupil localization cascade only once
 	if len(puplocCascade) == 0 {
-		puplocCascade, err := ioutil.ReadFile("/Users/ruppala/go/src/github.com/esimov/pigo/cascade/puploc")
+		puplocCascade, err := ioutil.ReadFile(cascadePuploc)
 		if err != nil {
 			log.Fatalf("Error reading the puploc cascade file: %s", err)
 		}
@@ -305,7 +321,7 @@ func findFaces(pixels []uint8, rows, cols int) []pigo.Detection {
 			log.Fatalf("Error unpacking the puploc cascade file: %s", err)
 		}
 
-		flpcs, err = puplocClassifier.ReadCascadeDir("/Users/ruppala/go/src/github.com/esimov/pigo/cascade/lps")
+		flpcs, err = puplocClassifier.ReadCascadeDir(cascadeLPS)
 		if err != nil {
 			log.Fatalf("Error unpacking the facial landmark detection cascades: %s", err)
 		}
@@ -313,10 +329,10 @@ func findFaces(pixels []uint8, rows, cols int) []pigo.Detection {
 
 	// Run the classifier over the obtained leaf nodes and return the detection results.
 	// The result contains quadruplets representing the row, column, scale and detection score.
-	dets := faceClassifier.RunCascade(cParams, 0.0)
+	dets := faceClassifier.RunCascade(cParams, defaultAngle)
 
 	// Calculate the intersection over union (IoU) of two clusters.
-	dets = faceClassifier.ClusterDetections(dets, 0.2)
+	dets = faceClassifier.ClusterDetections(dets, iouThreshold)
 
 	return dets
 }

@@ -10,6 +10,7 @@
     $(document).ready(function() {
       $("form#files").submit(function(e) {
           e.preventDefault();    
+          $("form#files").hide();
           var formData = new FormData(this);
           $.ajax({
               url: window.location.pathname + "upload",
@@ -19,14 +20,18 @@
               data: formData,
               success: function (output) {
                 $('#response').html(JSON.stringify(output.landmarks, null, 4));
-                console.log(output)
                 $("#resultImage").attr("src", './images/' + output.output_file);
+                $("#time").html("Time taken to finish the request: " + output.time_took + " milliseconds.");
+              },
+              error: function (jqXHR, textStatus, errorThrown) { 
+                $("#response").html(jqXHR.responseText);
               },
               cache: false,
               contentType: false,
               processData: false
           });
-      }); 
+          $("form#files").show();
+        }); 
       $("form#url").submit(function(e) {
           e.preventDefault();    
           var formData = new FormData(this);
@@ -39,6 +44,10 @@
               success: function (output) {
                 $('#response').html(JSON.stringify(output.landmarks, null, 4));
                 $("#resultImage").attr("src", './images/' + output.output_file);
+                $("#time").html("Time taken to finish the request: " + output.time_took + " milliseconds.");
+              },
+              error: function(jqXHR, textStatus, errorThrown) {
+                $("#response").html(jqXHR.responseText);
               },
               cache: false,
               contentType: false,
@@ -78,22 +87,27 @@
     </div>
   </div>
 </div>
-
+<br/><br/><br/><br/>
+<div class="container">
+  <div class="centered">
+    <h5 class="text-center" id="time"></h5>
+  </div>
+</div>
 <br/><br/><br/><br/><br/><br/><br/><br/>
 <div class="container">
   <div class="col">
     <div class="col-xs-6">
-        <h5>Image</h5>
+        <h5> Image </h5>
         <figure class="figure">
-          <img id="resultImage" src="./images/demo.png" class="figure-img img-fluid rounded">
+          <img id="resultImage" src="https://dummyimage.com/400x300" class="figure-img img-fluid rounded">
         </figure>  
     </div>
   </div>
   <div class="col">
     <div class="col-xs-6">
       <div class="form-group">
-        <label for="exampleTextarea">Results</label>
-        <textarea class="form-control" id="response" name="results" rows="10"></textarea>
+        <h5>Results ( Facial Landmarks ) </h5>
+        <textarea class="form-control" id="response" name="results" rows="15" size="30"></textarea>
       </div>
     </div>
   </div>
