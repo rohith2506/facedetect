@@ -7,6 +7,19 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
   <title>Face Detection App</title>
   <script>
+
+    
+    function showFacialLandMarks(output) {
+      var responseString = JSON.stringify(output.landmarks, null, 4)
+      if(responseString == "null") {
+        $('#response').html(JSON.stringify("Unable to detect any facial landmarks. Image is either angular (or) faces are not that clear"));
+      } else {
+        $('#response').html(responseString);
+      }
+      $("#resultImage").attr("src", './images/' + output.output_file);
+      $("#time").html("Time taken to finish the request: " + output.time_took + " milliseconds.");
+    }
+
     $(document).ready(function() {
       $("form#files").submit(function(e) {
           e.preventDefault();    
@@ -19,9 +32,7 @@
               contentType: "application/json; charset=utf-8",
               data: formData,
               success: function (output) {
-                $('#response').html(JSON.stringify(output.landmarks, null, 4));
-                $("#resultImage").attr("src", './images/' + output.output_file);
-                $("#time").html("Time taken to finish the request: " + output.time_took + " milliseconds.");
+                showFacialLandMarks(output)
               },
               error: function (jqXHR, textStatus, errorThrown) { 
                 $("#response").html(jqXHR.responseText);
@@ -42,9 +53,7 @@
               contentType: "application/json; charset=utf-8",
               data: formData,
               success: function (output) {
-                $('#response').html(JSON.stringify(output.landmarks, null, 4));
-                $("#resultImage").attr("src", './images/' + output.output_file);
-                $("#time").html("Time taken to finish the request: " + output.time_took + " milliseconds.");
+                showFacialLandMarks(output)
               },
               error: function(jqXHR, textStatus, errorThrown) {
                 $("#response").html(jqXHR.responseText);
