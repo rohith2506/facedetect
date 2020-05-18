@@ -9,16 +9,15 @@ For more information on pigo, follow the above github source code (or) read this
 
 ### How it works
 
-**Note: My knowledge in computer vision is quite minimum. so, please excuse my technical incorrectness if that occurs.
+<i>Note: My knowledge in computer vision is quite minimum. so, please excuse my technical incorrectness if that occurs.</i>
 
-Object recognition is the most popular topic in computer vision and has been there for decades. First came the wave of custom handmade models with and then the wave of deep learning. Currrent implementation supports a hybrid model which takes the best out of both.
+Object recognition is the most popular topic in computer vision and has been there for decades. First came the wave of custom handmade models and then the wave of deep learning. Currrent implementation supports a hybrid model which takes the best out of both.
 
 ##### Pixel Intensity Comparison-based Object detection
 Classical models like [Viola Jones](https://en.wikipedia.org/wiki/Viola%E2%80%93Jones_object_detection_framework) have made object detection scalable. It sacrifice certain degree of accuracy for speed. Angular faces ( Faces which turned left (or) right (or) up (or) down) cannot be detected.
 
 Current model is modification to the above Viola Jones but also supports angular faces to a certain amount of accuracy. It scans the image using binary cascade classifiers at all reasonable positions and scales. Each binary classifier itself is an ensemble of decision trees with pixel intensity comparisons at their internal nodes. An image region is considered having face if it passes the above pixel intensity test with all the cascade members.
 
-For more information, please read the paper.
 
 ## Install
 Install Go, set your `GOPATH`, and make sure `$GOPATH/bin` is on your `PATH`.
@@ -100,7 +99,7 @@ There's a workaround for this. We can run the algorithm for every possible combi
 
 
 ## Conclusions / Future Work
-This module can act like a blueprint on how to build production level machine learning API's as a service. 
+This module can act like a blueprint on how to build production level machine learning API as a service. 
 
 Future work includes
 1. Integrate / build modules which support pretrained deep learning models to infer / predict from.
