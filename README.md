@@ -49,6 +49,11 @@ $ go build
 $ ./facedetect
 ```
 
+To run tests
+```bash
+$ go test -v ./...
+```
+
 You can access the web UI at http://localhost:8000 in your web browser
 
 ## Directory Structure
