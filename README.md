@@ -1,4 +1,4 @@
-<h1 align="center">Facial Detection API as a Service</h1>
+<h1 align="center">Facial Recoginition as a Service</h1>
 
 facedetect is a pure Go face detection API which depends on [pigo](https://github.com/esimov/pigp). Thanks to @esimov for his hard work on this.
 For more information on pigo, follow the above github source code (or) read this paper (https://arxiv.org/pdf/1305.4537.pdf). 
@@ -55,7 +55,9 @@ To run tests
 $ go test -v ./...
 ```
 
-You can access the web UI at http://localhost:8000 in your web browser
+You can access the web UI at http://localhost:8000 in your web browser. You can test the upload functionality by using images from `test_images` folder.
+
+<i> Please choose straight face (or) clear images for better accuracy. The current algorithm don't use any heavy pretrained ML models </i>
 
 ## Directory Structure
 
