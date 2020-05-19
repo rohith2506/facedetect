@@ -117,7 +117,7 @@ func ImageUploadHandler(c *gin.Context) {
 	imageExtension := filepath.Ext(file.Filename)
 	_, found := utilities.Find(availableExtensions, imageExtension)
 	if !found {
-		c.JSON(http.StatusBadRequest, gin.H{"invalid image extension": "possible extensions are [jpg, jpeg, png]"})
+		c.JSON(http.StatusBadRequest, gin.H{"invalid image extension": "possible url extensions are [jpg, jpeg, png]. This limitation will be fixed soon."})
 		return
 	}
 
@@ -190,7 +190,7 @@ func ImagePostHandler(c *gin.Context) {
 	imageExtension := filepath.Ext(imageURL.Path)
 	_, found := utilities.Find(availableExtensions, imageExtension)
 	if !found {
-		c.JSON(http.StatusBadRequest, gin.H{"invalid image extension": "possible extensions are [jpg, jpeg, png]"})
+		c.JSON(http.StatusBadRequest, gin.H{"invalid image extension": "possible extensions are [jpg, jpeg, png]. This limitation will be fixed soon."})
 		return
 	}
 
