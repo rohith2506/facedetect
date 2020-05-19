@@ -6,12 +6,31 @@ For more information on pigo, follow the above github source code (or) read this
 ### Demo
 <img src="./test_images/me.png" alt="alt text" width="900"/>
 
+Current demo shows json result as 
+```
+[
+    "Faces": {
+        "bounds": {
+            "y": 150
+            "x": 170
+            "length": 40
+         },
+         "left_eye": {
+            "y": 178,
+            "x": 168,
+            "scale": 10
+         }
+         ....
+]
+```
+Here `x, y` is the center of the bounding box and `length` represents the height and width of bounding box. We represent our bounding boxes as squares.
 
 ### How it works
 
 <i>Note: My knowledge in computer vision is quite minimum. so, please excuse my technical incorrectness if that occurs.</i>
 
 Object recognition is the most popular topic in computer vision and has been there for decades. First came the wave of custom handmade models and then the wave of deep learning. Currrent implementation supports a hybrid model which takes the best out of both.
+
 
 ##### Pixel Intensity Comparison-based Object detection
 Classical models like [Viola Jones](https://en.wikipedia.org/wiki/Viola%E2%80%93Jones_object_detection_framework) have made object detection scalable. It sacrifice certain degree of accuracy for speed. Angular faces ( Faces which turned left (or) right (or) up (or) down) cannot be detected.
