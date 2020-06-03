@@ -1,4 +1,4 @@
-<h1 align="center">Facial Recoginition as a Service</h1>
+<h1 align="center">Face Detection as a Service</h1>
 
 facedetect is a pure Go face detection API which depends on [pigo](https://github.com/esimov/pigp). Thanks to @esimov for his hard work on this.
 For more information on pigo, follow the above github source code (or) read this paper (https://arxiv.org/pdf/1305.4537.pdf). 
