@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// Constants
 const (
 	ConnHost = "localhost"
 	ConnPort = "3333"
