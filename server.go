@@ -14,14 +14,14 @@ import (
 
 	static "github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
-	detector "github.com/rohith2506/facedetect/detector"
+	models "github.com/rohith2506/facedetect/models"
+	pico "github.com/rohith2506/facedetect/models/pico"
 	redis "github.com/rohith2506/facedetect/redis"
 	utilities "github.com/rohith2506/facedetect/utilities"
 )
 
 const (
 	tempDir = "/tmp/images/temporary/"
-
 	redisDB = 0
 )
 
@@ -59,8 +59,8 @@ func main() {
 }
 
 // Checks whether the image already exists in codebase
-func getExistingImage(imageHash string) (*detector.ImageOutput, error) {
-	var output *detector.ImageOutput
+func getExistingImage(imageHash string) (*pico.ImageOutput, error) {
+	var output *pico.ImageOutput
 
 	if redisConn == nil {
 		redisConn = redis.CreateConnection(redisDB)
@@ -154,9 +154,8 @@ func ImageUploadHandler(c *gin.Context) {
 		})
 	} else {
 		// run the algorithm
-		output := detector.DetectFaces(imageHash, tempImage)
+		output := models.RunFaceDetection(imageHash, tempImage, 1)
 
-		// Cache the image
 		value, _ := json.Marshal(output)
 		err = redisConn.SetKey(imageHash, value)
 		if err != nil {
@@ -236,9 +235,8 @@ func ImagePostHandler(c *gin.Context) {
 		})
 	} else {
 		// Run the algorithm
-		output := detector.DetectFaces(imageHash, tempImage)
+		output := models.RunFaceDetection(imageHash, tempImage, 1)
 
-		// Cache the image
 		value, _ := json.Marshal(output)
 		err = redisConn.SetKey(imageHash, value)
 		if err != nil {

@@ -1,0 +1,4 @@
+package mtcnn
+
+func foo() {
+}
