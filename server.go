@@ -15,7 +15,6 @@ import (
 	static "github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	models "github.com/rohith2506/facedetect/models"
-	pico "github.com/rohith2506/facedetect/models/pico"
 	redis "github.com/rohith2506/facedetect/redis"
 	utilities "github.com/rohith2506/facedetect/utilities"
 )

@@ -1,4 +1,4 @@
-package pico
+package models
 
 import (
 	"image"
@@ -7,7 +7,6 @@ import (
 	"os"
 
 	pigo "github.com/esimov/pigo/core"
-	models "github.com/rohith2506/facedetect/models"
 )
 
 var (
@@ -37,8 +36,8 @@ var (
 	perturb              = perturbVal
 )
 
-// DetectFaces ....
-func DetectFaces(imagePath string) []models.Detection {
+// DetectPico ....
+func DetectPico(imagePath string) []Detection {
 	// Decode the image
 	reader, err := os.Open(imagePath)
 	if err != nil {
@@ -88,7 +87,7 @@ func loadPicoModels() {
 	}
 }
 
-func findFacialLandMarks(pixels []uint8, rows, cols int) []models.Detection {
+func findFacialLandMarks(pixels []uint8, rows, cols int) []Detection {
 	// Initialize the parameters
 	imgParams := &pigo.ImageParams{
 		Pixels: pixels,
@@ -111,7 +110,7 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []models.Detection {
 	dets := faceClassifier.RunCascade(cParams, defaultAngle)
 	faces := faceClassifier.ClusterDetections(dets, iouThreshold)
 
-	var facialLandmarks []models.Detection
+	var facialLandmarks []Detection
 
 	// Find the remaining landmarks
 	for _, face := range faces {
@@ -120,13 +119,13 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []models.Detection {
 		}
 		var (
 			puploc        *pigo.Puploc
-			leftEyeCoord  models.Coord
-			rightEyeCoord models.Coord
-			mouthCoords   []models.Coord
+			leftEyeCoord  Coord
+			rightEyeCoord Coord
+			mouthCoords   []Coord
 		)
 
 		// face
-		faceCoord := models.RectCoord{
+		faceCoord := RectCoord{
 			Row:    face.Row,
 			Col:    face.Col,
 			Width:  face.Scale,
@@ -142,7 +141,7 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []models.Detection {
 		}
 		leftEye := puplocClassifier.RunDetector(*puploc, *imgParams, 0.0, false)
 		if leftEye.Row > 0 && leftEye.Col > 0 {
-			leftEyeCoord = models.Coord{
+			leftEyeCoord = Coord{
 				Row: leftEye.Row,
 				Col: leftEye.Col,
 			}
@@ -157,7 +156,7 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []models.Detection {
 		}
 		rightEye := puplocClassifier.RunDetector(*puploc, *imgParams, 0.0, false)
 		if rightEye.Row > 0 && rightEye.Col > 0 {
-			rightEyeCoord = models.Coord{
+			rightEyeCoord = Coord{
 				Row: rightEye.Row,
 				Col: rightEye.Col,
 			}
@@ -169,7 +168,7 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []models.Detection {
 				flp := flpc.FindLandmarkPoints(leftEye, rightEye, *imgParams, perturb, false)
 				if flp.Row > 0 && flp.Col > 0 {
 				}
-				mouthCoords = append(mouthCoords, models.Coord{
+				mouthCoords = append(mouthCoords, Coord{
 					Row: flp.Row,
 					Col: flp.Col,
 				})
@@ -177,7 +176,7 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []models.Detection {
 		}
 
 		// Append everything to the output
-		facialLandmarks = append(facialLandmarks, models.Detection{
+		facialLandmarks = append(facialLandmarks, Detection{
 			FaceCoord: faceCoord,
 			LeftEye:   leftEyeCoord,
 			RightEye:  rightEyeCoord,

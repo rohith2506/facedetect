@@ -1,4 +1,4 @@
-package mtcnn
+package models
 
 import (
 	"bufio"
