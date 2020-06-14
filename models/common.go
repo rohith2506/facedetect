@@ -2,12 +2,12 @@ package models
 
 import (
 	"errors"
+	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
 	"io"
 	"log"
-	"math"
 	"os"
 	"path/filepath"
 
@@ -26,8 +26,8 @@ var (
 const (
 	PicoModel    = 1
 	MTCNNModel   = 2
-	outputDir    = "/tmp/images/out"
-	adjustedCols = 300
+	outputDir    = "/tmp/images/out/"
+	adjustedCols = 400
 	adjustedRows = 400
 )
 
@@ -54,17 +54,16 @@ type Detection struct {
 	Nose      Coord     `json:"nose,omitempty"`
 }
 
-func createOutputFile(imageHash string) {
-	imageExtension := filepath.Ext(imagePath)
-	outputImagePath := imageHash + imageExtension
-	createOutputFile(outputImagePath)
-	fn, err = os.OpenFile(outputDir+outputImagePath, os.O_CREATE|os.O_WRONLY, 0755)
+// Let's create the output file
+func createOutputFile(imagePath string) {
+	fn, err = os.OpenFile(imagePath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		log.Fatalf("Unable to open output file: %v", err)
 	}
 	dst = fn
 }
 
+// encode the image
 func encodeImage(dst io.Writer) error {
 	var err error
 	img := dc.Image()
@@ -87,13 +86,25 @@ func encodeImage(dst io.Writer) error {
 	return err
 }
 
-func drawImages(imageHash string, faces []Detection) {
-	createOutputFile(imageHash)
+func drawImages(imagePath string, faces []Detection) {
+	reader, err := os.Open(imagePath)
+	if err != nil {
+		log.Fatalf("Error in reading the image file: %v", err)
+	}
+
+	// Decode the image
+	img, _, err := image.Decode(reader)
+	if err != nil {
+		log.Fatalf("Error in decoding the image: %v", err)
+	}
+
+	src := pigo.ImgToNRGBA(img)
+	cols, rows := src.Bounds().Max.X, src.Bounds().Max.Y
 
 	dc = gg.NewContext(cols, rows)
 	dc.DrawImage(src, 0, 0)
 
-	landmarks, err := drawFaces(faces)
+	drawFaces(faces)
 
 	if err := encodeImage(dst); err != nil {
 		log.Fatalf("Error encoding the output image: %v", err)
@@ -105,23 +116,29 @@ func drawFaces(faces []Detection) {
 	for _, face := range faces {
 		// Draw the face
 		dc.DrawRectangle(
-			float64(face.FaceCoord.Col-face.FaceCoord.Width/2),
-			float64(face.FaceCoord.Row-face.FaceCoord.Height/2),
+			float64(face.FaceCoord.Row),
+			float64(face.FaceCoord.Col),
 			float64(face.FaceCoord.Width),
 			float64(face.FaceCoord.Height),
 		)
-		dc.SetLineWidth(2.0)
+		dc.SetLineWidth(4.0)
 		dc.SetStrokeStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 0, B: 0, A: 255}))
 		dc.Stroke()
-		// left eye		
-		drawDetections(dc, float64(face.), float64(leftEye.Row), float64(leftEye.Scale), color.RGBA{R: 255, G: 0, B: 0, A: 255}, true)
-		// right eye		
-		drawDetections(dc, float64(rig.Col), float64(leftEye.Row), float64(leftEye.Scale), color.RGBA{R: 255, G: 0, B: 0, A: 255}, true)
+
+		// Draw the left eye
+		dc.DrawPoint(float64(face.LeftEye.Row), float64(face.LeftEye.Col), 2.0)
+		dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 255, B: 0, A: 255}))
+		dc.Fill()
+
+		// Draw the right eye
+		dc.DrawPoint(float64(face.RightEye.Row), float64(face.RightEye.Col), 2.0)
+		dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 255, B: 0, A: 255}))
+		dc.Fill()
 	}
 }
 
 // RunFaceDetection ....
-func RunFaceDetection(imageHash string, imagePath string, modelToRun int) []Detection {
+func RunFaceDetection(imageHash string, imagePath string, modelToRun int) ([]Detection, string) {
 	// Find the facial landmarks
 	var result []Detection
 	if modelToRun == PicoModel {
@@ -130,7 +147,10 @@ func RunFaceDetection(imageHash string, imagePath string, modelToRun int) []Dete
 		result = DetectMTCNN(imagePath)
 	}
 
-	go drawImages(imageHash)
+	// create an output image
+	outputImagePath := imageHash + filepath.Ext(imagePath)
+	createOutputFile(outputImagePath)
 
-	return result
+	go drawImages(imagePath, result)
+	return result, outputImagePath
 }

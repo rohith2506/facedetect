@@ -58,8 +58,8 @@ func main() {
 }
 
 // Checks whether the image already exists in codebase
-func getExistingImage(imageHash string) (*pico.ImageOutput, error) {
-	var output *pico.ImageOutput
+func getExistingImage(imageHash string) (*models.Detection, error) {
+	var output *models.Detection
 
 	if redisConn == nil {
 		redisConn = redis.CreateConnection(redisDB)
@@ -147,23 +147,22 @@ func ImageUploadHandler(c *gin.Context) {
 		elapsed := time.Since(start)
 
 		c.JSON(http.StatusOK, gin.H{
-			"landmarks":   cacheOutput.Landmarks,
-			"output_file": cacheOutput.ImagePath,
-			"time_took":   elapsed.Milliseconds(),
+			"landmarks": cacheOutput,
+			"time_took": elapsed.Milliseconds(),
 		})
 	} else {
 		// run the algorithm
-		output := models.RunFaceDetection(imageHash, tempImage, 1)
+		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage, 2)
 
-		value, _ := json.Marshal(output)
+		value, _ := json.Marshal(landmarks)
 		err = redisConn.SetKey(imageHash, value)
 		if err != nil {
 			log.Printf("Error in redis set: %v", err)
 		}
 		elapsed := time.Since(start)
 		c.JSON(http.StatusOK, gin.H{
-			"landmarks":   output.Landmarks,
-			"output_file": output.ImagePath,
+			"landmarks":   landmarks,
+			"output_file": outputImagePath,
 			"time_took":   elapsed.Milliseconds(),
 		})
 	}
@@ -228,23 +227,22 @@ func ImagePostHandler(c *gin.Context) {
 	if cacheOutput != nil {
 		elapsed := time.Since(start)
 		c.JSON(http.StatusOK, gin.H{
-			"landmarks":   cacheOutput.Landmarks,
-			"output_file": cacheOutput.ImagePath,
-			"time_took":   elapsed.Milliseconds(),
+			"landmarks": cacheOutput,
+			"time_took": elapsed.Milliseconds(),
 		})
 	} else {
 		// Run the algorithm
-		output := models.RunFaceDetection(imageHash, tempImage, 1)
+		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage, 1)
 
-		value, _ := json.Marshal(output)
+		value, _ := json.Marshal(landmarks)
 		err = redisConn.SetKey(imageHash, value)
 		if err != nil {
 			log.Printf("Error in redis set: %v", err)
 		}
 		elapsed := time.Since(start)
 		c.JSON(http.StatusOK, gin.H{
-			"landmarks":   output.Landmarks,
-			"output_file": output.ImagePath,
+			"landmarks":   landmarks,
+			"output_file": outputImagePath,
 			"time_took":   elapsed.Milliseconds(),
 		})
 	}

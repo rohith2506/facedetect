@@ -10,24 +10,24 @@ import (
 )
 
 var (
-	cascade          []byte
-	puplocCascade    []byte
-	faceClassifier   *pigo.Pigo
-	puplocClassifier *pigo.PuplocCascade
-	flpcs            map[string][]*pigo.FlpCascade
-	err              error
+	cascade           []byte
+	puplocCascade     []byte
+	faceClassifier    *pigo.Pigo
+	puplocClassifier  *pigo.PuplocCascade
+	flpcs             map[string][]*pigo.FlpCascade
+	err               error
+	cascadeFaceFinder string
+	cascadePuploc     string
+	cascadeLPS        string
 )
 
 const (
-	cascadeFaceFinder = "cascade/facefinder"
-	cascadePuploc     = "cascade/puploc"
-	cascadeLPS        = "cascade/lps"
-	defaultAngle      = 0.0
-	iouThreshold      = 0.2
-	perturbVal        = 63
-	qThreshold        = 5.0
-	minImageSize      = 20
-	maxImageSize      = 2000
+	defaultAngle = 0.0
+	iouThreshold = 0.2
+	perturbVal   = 63
+	qThreshold   = 5.0
+	minImageSize = 20
+	maxImageSize = 2000
 )
 
 var (
@@ -35,6 +35,19 @@ var (
 	qThresh      float32 = qThreshold
 	perturb              = perturbVal
 )
+
+// SetModelFilePaths ...
+func SetModelFilePaths(testRun bool) {
+	if testRun == true {
+		cascadeFaceFinder = "cascade/facefinder"
+		cascadePuploc = "cascade/puploc"
+		cascadeLPS = "cascade/lps"
+	} else {
+		cascadeFaceFinder = "models/cascade/facefinder"
+		cascadePuploc = "models/cascade/puploc"
+		cascadeLPS = "models/cascade/lps"
+	}
+}
 
 // DetectPico ....
 func DetectPico(imagePath string) []Detection {
@@ -59,6 +72,7 @@ func DetectPico(imagePath string) []Detection {
 
 // load pico models ...
 func loadPicoModels() {
+	SetModelFilePaths(false)
 	if len(cascade) == 0 {
 		cascade, err = ioutil.ReadFile(cascadeFaceFinder)
 		if err != nil {
