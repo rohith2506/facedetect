@@ -152,7 +152,7 @@ func ImageUploadHandler(c *gin.Context) {
 		})
 	} else {
 		// run the algorithm
-		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage, 2)
+		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage)
 
 		value, _ := json.Marshal(landmarks)
 		err = redisConn.SetKey(imageHash, value)
@@ -232,7 +232,7 @@ func ImagePostHandler(c *gin.Context) {
 		})
 	} else {
 		// Run the algorithm
-		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage, 1)
+		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage)
 
 		value, _ := json.Marshal(landmarks)
 		err = redisConn.SetKey(imageHash, value)
