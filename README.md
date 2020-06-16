@@ -78,30 +78,6 @@ You can access the web UI at http://localhost:8000 in your web browser. You can 
 
 <i> Please choose straight face (or) clear images for better accuracy. The current algorithm don't use any heavy pretrained ML models </i>
 
-## Directory Structure
-
-```
-facedetect
-│   README.md
-│
-└───redis
-│   │   redis.go
-│   │   redis_test.go
-|
-└───templates
-|   │   index.html
-|
-└───detector
-    │   detector.go
-|
-└───server.go
-└───server_test.go
-|
-└───utilities
-    │  utilities.go
-    │  utilities_test.go
-```
-
 ## Architecture
 
 Architecture is quite simple and minimalistic.

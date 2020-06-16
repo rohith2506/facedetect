@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -58,8 +59,8 @@ func main() {
 }
 
 // Checks whether the image already exists in codebase
-func getExistingImage(imageHash string) (*models.Detection, error) {
-	var output *models.Detection
+func getExistingImage(imageHash string) (*[]models.Detection, error) {
+	var output *[]models.Detection
 
 	if redisConn == nil {
 		redisConn = redis.CreateConnection(redisDB)
@@ -152,7 +153,7 @@ func ImageUploadHandler(c *gin.Context) {
 		})
 	} else {
 		// run the algorithm
-		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage, 2)
+		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage)
 
 		value, _ := json.Marshal(landmarks)
 		err = redisConn.SetKey(imageHash, value)
@@ -226,13 +227,14 @@ func ImagePostHandler(c *gin.Context) {
 	// Return from cache
 	if cacheOutput != nil {
 		elapsed := time.Since(start)
+		fmt.Println(cacheOutput)
 		c.JSON(http.StatusOK, gin.H{
 			"landmarks": cacheOutput,
 			"time_took": elapsed.Milliseconds(),
 		})
 	} else {
 		// Run the algorithm
-		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage, 1)
+		landmarks, outputImagePath := models.RunFaceDetection(imageHash, tempImage)
 
 		value, _ := json.Marshal(landmarks)
 		err = redisConn.SetKey(imageHash, value)
