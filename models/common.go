@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -27,7 +28,7 @@ const (
 	PicoModel    = 1
 	MTCNNModel   = 2
 	outputDir    = "/tmp/images/out/"
-	adjustedCols = 400
+	adjustedCols = 300
 	adjustedRows = 400
 )
 
@@ -56,7 +57,7 @@ type Detection struct {
 
 // Let's create the output file
 func createOutputFile(imagePath string) {
-	fn, err = os.OpenFile(imagePath, os.O_CREATE|os.O_WRONLY, 0755)
+	fn, err := os.OpenFile(imagePath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		log.Fatalf("Unable to open output file: %v", err)
 	}
@@ -115,42 +116,53 @@ func drawImages(imagePath string, faces []Detection) {
 func drawFaces(faces []Detection) {
 	for _, face := range faces {
 		// Draw the face
-		dc.DrawRectangle(
-			float64(face.FaceCoord.Row),
-			float64(face.FaceCoord.Col),
-			float64(face.FaceCoord.Width),
-			float64(face.FaceCoord.Height),
-		)
+		dc.DrawRectangle(float64(face.FaceCoord.Row), float64(face.FaceCoord.Col),
+			float64(face.FaceCoord.Width), float64(face.FaceCoord.Height))
 		dc.SetLineWidth(4.0)
 		dc.SetStrokeStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 0, B: 0, A: 255}))
 		dc.Stroke()
 
-		// Draw the left eye
-		dc.DrawPoint(float64(face.LeftEye.Row), float64(face.LeftEye.Col), 2.0)
-		dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 255, B: 0, A: 255}))
+		// Set the radius for drawing out points
+		radius := math.Min(10, float64(face.FaceCoord.Width/10))
+
+		// left eye
+		dc.DrawPoint(float64(face.LeftEye.Row), float64(face.LeftEye.Col), float64(radius))
+		dc.SetLineWidth(4.0)
+		dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 0, B: 0, A: 255}))
 		dc.Fill()
 
-		// Draw the right eye
-		dc.DrawPoint(float64(face.RightEye.Row), float64(face.RightEye.Col), 2.0)
-		dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 255, B: 0, A: 255}))
+		// right eye
+		dc.DrawPoint(float64(face.RightEye.Row), float64(face.RightEye.Col), float64(radius))
+		dc.SetLineWidth(4.0)
+		dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 0, B: 0, A: 255}))
 		dc.Fill()
+
+		// nose
+		dc.DrawPoint(float64(face.Nose.Row), float64(face.Nose.Col), float64(radius))
+		dc.SetLineWidth(4.0)
+		dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 0, B: 0, A: 255}))
+		dc.Fill()
+
+		// mouth
+		for _, mouth := range face.Mouth {
+			dc.DrawPoint(float64(mouth.Row), float64(mouth.Col), float64(radius))
+			dc.SetLineWidth(4.0)
+			dc.SetFillStyle(gg.NewSolidPattern(color.RGBA{R: 255, G: 0, B: 0, A: 255}))
+			dc.Fill()
+		}
+
 	}
 }
 
 // RunFaceDetection ....
-func RunFaceDetection(imageHash string, imagePath string, modelToRun int) ([]Detection, string) {
+func RunFaceDetection(imageHash string, imagePath string) ([]Detection, string) {
 	// Find the facial landmarks
-	var result []Detection
-	if modelToRun == PicoModel {
-		result = DetectPico(imagePath)
-	} else {
-		result = DetectMTCNN(imagePath)
-	}
+	result := DetectMTCNN(imagePath)
 
 	// create an output image
-	outputImagePath := imageHash + filepath.Ext(imagePath)
-	createOutputFile(outputImagePath)
+	outputImageFile := imageHash + filepath.Ext(imagePath)
+	createOutputFile(outputDir + outputImageFile)
 
-	go drawImages(imagePath, result)
-	return result, outputImagePath
+	drawImages(imagePath, result)
+	return result, outputImageFile
 }

@@ -11,7 +11,7 @@ const (
 	connectionType = "tcp"
 	Host           = "localhost"
 	Port           = "3333"
-	MaxBufSize     = 2000 // I don't think it will be more than 2k bytes
+	MaxBufSize     = 20000 // I don't think it will be more than 2k bytes
 )
 
 var conn net.Conn

@@ -17,7 +17,7 @@ class MultiClientServer:
         self.server_address = (HOST, PORT)
         self.detector = MTCNN()
         self.inputs, self.outputs, self.message_queues = [], [], {}
-        
+
     def process_image(self, image_path):
         image_path = image_path.decode('utf-8').strip()
         result = ""

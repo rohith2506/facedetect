@@ -1,10 +1,13 @@
 package models
 
 import (
+	"fmt"
 	"image"
 	"io/ioutil"
 	"log"
 	"os"
+
+	"encoding/json"
 
 	pigo "github.com/esimov/pigo/core"
 )
@@ -51,6 +54,7 @@ func SetModelFilePaths(testRun bool) {
 
 // DetectPico ....
 func DetectPico(imagePath string) []Detection {
+	fmt.Println("I am using pico detector")
 	// Decode the image
 	reader, err := os.Open(imagePath)
 	if err != nil {
@@ -125,6 +129,7 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []Detection {
 	faces := faceClassifier.ClusterDetections(dets, iouThreshold)
 
 	var facialLandmarks []Detection
+	fmt.Printf("Total number of faces: %v\n", len(faces))
 
 	// Find the remaining landmarks
 	for _, face := range faces {
@@ -197,6 +202,9 @@ func findFacialLandMarks(pixels []uint8, rows, cols int) []Detection {
 			Mouth:     mouthCoords,
 		})
 	}
+
+	temp, _ := json.Marshal(facialLandmarks)
+	fmt.Println("in string format: " + string(temp))
 
 	return facialLandmarks
 }
