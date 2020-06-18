@@ -15,6 +15,7 @@ import (
 	pigo "github.com/esimov/pigo/core"
 	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
+	"github.com/rohith2506/facedetect/s3"
 )
 
 var (
@@ -30,6 +31,8 @@ const (
 	outputDir    = "/tmp/images/out/"
 	adjustedCols = 300
 	adjustedRows = 400
+	environment  = "default"
+	bucket       = "facedetection25"
 )
 
 // Coord ...
@@ -155,14 +158,29 @@ func drawFaces(faces []Detection) {
 }
 
 // RunFaceDetection ....
-func RunFaceDetection(imageHash string, imagePath string) ([]Detection, string) {
+func RunFaceDetection(outputImageName string, imagePath string) []Detection {
 	// Find the facial landmarks
 	result := DetectMTCNN(imagePath)
 
 	// create an output image
-	outputImageFile := imageHash + filepath.Ext(imagePath)
-	createOutputFile(outputDir + outputImageFile)
+	outputImageLoc := outputDir + outputImageName
+	createOutputFile(outputImageLoc)
 
+	// Draw the final image
 	drawImages(imagePath, result)
-	return result, outputImageFile
+
+	// Upload it to s3
+	connection := s3.GetAwsSession(environment)
+	err := connection.UploadFile(outputImageLoc, outputImageName, bucket)
+	if err != nil {
+		log.Fatalf("Error in uploading file to aws: %v", err)
+	}
+
+	// delete the output image from local
+	err = os.Remove(outputImageLoc)
+	if err != nil {
+		log.Fatalf("Error in deleting the output image: %v", err)
+	}
+
+	return result
 }

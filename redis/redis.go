@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"fmt"
+
 	"github.com/go-redis/redis/v7"
 )
 
@@ -49,6 +51,7 @@ func (conn *Connection) GetKey(key string) (string, error) {
 
 //SetKey ...
 func (conn *Connection) SetKey(key string, value interface{}) error {
+	fmt.Println(value)
 	err := conn.rClient.Set(key, value, 0).Err()
 	if err != nil {
 		return err

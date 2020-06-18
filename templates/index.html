@@ -20,7 +20,7 @@
       } else {
         $('#response').html(responseString);
       }
-      $("#resultImage").attr("src", './images/' + output.output_file);
+      $("#resultImage").attr("src", output.image_url);
       $("#time").html("Time taken to finish the request: " + output.time_took + " milliseconds.");
     }
 

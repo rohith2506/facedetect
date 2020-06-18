@@ -1,8 +1,10 @@
-package main
+package s3
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -11,74 +13,70 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
+const (
+	awsZone = "eu-central-1"
+	prodEnv = "default"
+)
+
+// Connection ...
+type Connection struct {
+	env  string
+	sess *session.Session
+}
+
 func exitErrorf(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)
 	os.Exit(1)
 }
 
-func main() {
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("eu-central-1"),
-		Credentials: credentials.NewSharedCredentials("", "default"),
-	})
-	svc := s3.New(sess)
-	result, err := svc.ListBuckets(nil)
+var connection *Connection
+
+// GetAwsSession ...
+func GetAwsSession(environment string) *Connection {
+	if connection == nil {
+		sess, err := session.NewSession(&aws.Config{
+			Region:      aws.String(awsZone),
+			Credentials: credentials.NewSharedCredentials("", environment),
+		})
+		if err != nil {
+			log.Fatalf("Error in creating aws session: %v", err)
+		}
+		connection = &Connection{
+			env:  environment,
+			sess: sess,
+		}
+	}
+	return connection
+}
+
+// UploadFile ...
+func (conn *Connection) UploadFile(imagePath string, imageID string, bucket string) error {
+	uploader := s3manager.NewUploader(conn.sess)
+	file, err := os.Open(imagePath)
 	if err != nil {
-		exitErrorf("Unable to list buckets, %v", err)
+		return err
 	}
-	fmt.Println("Buckets:")
-	for _, b := range result.Buckets {
-		fmt.Printf("* %s created on %s\n",
-			aws.StringValue(b.Name), aws.TimeValue(b.CreationDate))
-	}
-
-	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket)})
-	if err != nil {
-		exitErrorf("Unable to list items in bucket %q, %v", bucket, err)
-	}
-
-	for _, item := range resp.Contents {
-		fmt.Println("Name:         ", *item.Key)
-		fmt.Println("Last modified:", *item.LastModified)
-		fmt.Println("Size:         ", *item.Size)
-		fmt.Println("Storage class:", *item.StorageClass)
-		fmt.Println("")
-	}
-
-	// upload file to the bucket
-	filename := "../test_images/elon.jpg"
-	file, err := os.Open(filename)
-	if err != nil {
-		exitErrorf("Unable to open file %q, %v", err)
-	}
-	defer file.Close()
-	uploader := s3manager.NewUploader(sess)
-
 	_, err = uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(bucket),
-		Key:    aws.String("elon.jpg"),
+		Key:    aws.String(imageID),
 		Body:   file,
 	})
-
 	if err != nil {
-		// Print the error and exit.
-		exitErrorf("Unable to upload %q to %q, %v", filename, bucket, err)
+		return err
 	}
-	fmt.Printf("Successfully uploaded %q to %q\n", filename, bucket)
+	return nil
+}
 
-	// Download the file
-	bucket := "facedetection25"
-	item := "elon.jpg"
-	file, err := os.Create(item)
-	downloader := s3manager.NewDownloader(sess)
-	numBytes, err := downloader.Download(file,
-		&s3.GetObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(item),
-		})
+// GetImageURL ...
+func (conn *Connection) GetImageURL(imageID string, bucket string) (string, error) {
+	svc := s3.New(conn.sess)
+	req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(imageID),
+	})
+	urlStr, err := req.Presign(15 * time.Minute)
 	if err != nil {
-		exitErrorf("Unable to download item %q, %v", item, err)
+		return "", err
 	}
-	fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
-
+	return urlStr, nil
 }
