@@ -74,7 +74,7 @@ func (conn *Connection) GetImageURL(imageID string, bucket string) (string, erro
 		Bucket: aws.String(bucket),
 		Key:    aws.String(imageID),
 	})
-	urlStr, err := req.Presign(15 * time.Minute)
+	urlStr, err := req.Presign(100 * time.Hour)
 	if err != nil {
 		return "", err
 	}

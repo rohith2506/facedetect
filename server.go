@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -158,9 +157,7 @@ func handleFaceDetection(tempImage string, c *gin.Context, start time.Time, imag
 			ImageURL:  imageURL,
 		}
 
-		fmt.Println("redis output: ", redisOutput)
 		redisValue, err := json.Marshal(redisOutput)
-		fmt.Println("redis value: ", string(redisValue))
 		if err != nil {
 			log.Fatalf("Error in creating json marshal for redis output: %v", err)
 		}
