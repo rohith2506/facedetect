@@ -36,7 +36,7 @@ func GetAwsSession(environment string) *Connection {
 	if connection == nil {
 		sess, err := session.NewSession(&aws.Config{
 			Region:      aws.String(awsZone),
-			Credentials: credentials.NewSharedCredentials("", environment),
+			Credentials: credentials.NewEnvCredentials(),
 		})
 		if err != nil {
 			log.Fatalf("Error in creating aws session: %v", err)
