@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	awsZone = "eu-central-1"
-	prodEnv = "default"
+	awsRegion = "AWS_REGION"
+	prodEnv   = "default"
 )
 
 // Connection ...
@@ -35,7 +35,7 @@ var connection *Connection
 func GetAwsSession(environment string) *Connection {
 	if connection == nil {
 		sess, err := session.NewSession(&aws.Config{
-			Region:      aws.String(awsZone),
+			Region:      aws.String(os.Getenv(awsRegion)),
 			Credentials: credentials.NewEnvCredentials(),
 		})
 		if err != nil {

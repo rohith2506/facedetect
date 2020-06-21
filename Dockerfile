@@ -3,8 +3,11 @@ FROM golang:latest
 LABEL maintainer="Rohith Uppala <rohith.uppala369@gmail.com>"
 
 ENV GIN_MODE=release
-ENV AWS_SECRET_ACCESS_KEY=<YOUR AWS SECRET ACCESS KEY>
-ENV AWS_ACCESS_KEY_ID=<YOUR AWS ACCESS KEY ID>
+
+# Environment variables
+ENV AWS_SECRET_ACCESS_KEY=<YOUR-AWS-SECRET-ACESS-KEY>
+ENV AWS_ACCESS_KEY_ID=<YOUR-ACESS-KEY-ID>
+ENV AWS_REGION=<YOUR-AWS-REGION>
 
 RUN mkdir -p /tmp/images/out
 RUN mkdir -p /app/facedetect

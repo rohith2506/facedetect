@@ -36,7 +36,7 @@ $ docker run -d -p 8000:8000 <your-docker-tag>
 ```
 Open localhost:8000 to access the web UI.
 
-*Note: We store the web images in s3. please make sure to add `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` to Dockerfile before running it*
+*Note: We store the web images in s3. please make sure to add `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID` and `AWS_REGION` to Dockerfile before running it*
 
 ## Author
 
