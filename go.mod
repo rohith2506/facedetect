@@ -3,7 +3,7 @@ module github.com/rohith2506/facedetect
 go 1.14
 
 require (
-	github.com/aws/aws-sdk-go v1.32.3
+	github.com/aws/aws-sdk-go v1.34.0
 	github.com/esimov/pigo v1.4.2
 	github.com/fogleman/gg v1.3.0
 	github.com/gin-gonic/contrib v0.0.0-20191209060500-d6e26eeaa607
